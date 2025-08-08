@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from transformers import BertTokenizerFast
+from huggingface_hub import hf_hub_download
 from transformers import logging as transformers_logging
 from pathlib import Path
 from tqdm.auto import tqdm
@@ -20,7 +21,7 @@ tqdm.pandas()
 transformers_logging.set_verbosity_error()
 
 MAX_LEN = 512
-MODEL_DIR = Path("C:/Users/dnbot/Desktop/PROJECT/privacy_checker/models")
+REPO_ID = "Bnaad/PARENT_bert"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MIN_TOKENS = 10
 MAX_SEGMENTS = 100
@@ -49,7 +50,8 @@ def load_models():
     models = {}
     for label in label_names:
         safe_label = label.replace(" ", "_").replace("/", "_")
-        model_path = MODEL_DIR / f"torchscript_{safe_label}.pt"
+        filename = f"torchscript_{safe_label}.pt"
+        model_path = hf_hub_download(repo_id=REPO_ID, filename=filename)
         model = torch.jit.load(model_path, map_location=device)
         model.to(device)
         model.eval()
@@ -282,5 +284,6 @@ def process_policy_segments(
     app_df["Data Collection Summary"] = [policy_summary]
 
     return app_df, segment_df
+
 
 print('bert.py loaded')
