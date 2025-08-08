@@ -22,9 +22,9 @@ transformers_logging.set_verbosity_error()
 
 MAX_LEN = 512
 REPO_ID = "Bnaad/PARENT_bert"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 MIN_TOKENS = 10
-MAX_SEGMENTS = 100
+MAX_SEGMENTS = 70
 
 label_names = [
     "Information Type_IP address and device IDs",
@@ -52,6 +52,7 @@ def load_models():
         safe_label = label.replace(" ", "_").replace("/", "_")
         filename = f"torchscript_{safe_label}.pt"
         model_path = hf_hub_download(repo_id=REPO_ID, filename=filename)
+        print(f"Downloaded {filename} to {model_path}")
         model = torch.jit.load(model_path, map_location=device)
         model.to(device)
         model.eval()
@@ -287,3 +288,4 @@ def process_policy_segments(
 
 
 print('bert.py loaded')
+
