@@ -1,0 +1,14 @@
+streamlit
+pandas
+numpy
+scikit-learn
+joblib
+transformers
+torch
+tqdm
+requests
+beautifulsoup4
+google-play-scraper
+nltk
+openpyxl
+fpdf
