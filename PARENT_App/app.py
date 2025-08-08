@@ -1,0 +1,280 @@
+print('loading app.py')
+
+import streamlit as st
+import pandas as pd
+import time
+import joblib
+import os
+
+from utils import (
+    search_apps_starting_with,
+    check_if_app_exists,
+    fetch_info,
+    classify_app_risk,
+    map_permissions_list,
+    generate_risk_summary,
+    fetch_policy_text,
+    extract_segments,
+    clean_html,
+    clean_text,
+    check_permissions,
+    extract_permission_keyword_matches
+)
+from bert import get_tokenizer_and_models, process_policy_segments, predict_labels, summarize_predicted_labels_paragraph
+from gdpr import run_gdpr_processing,correct_terms, build_summary, final_keyword, pd_words, npd_words, perm_label
+from logistic import generate_sharing_summary
+from ui import display_app_header, display_app_analysis
+from tqdm.auto import tqdm
+
+tqdm.pandas()
+
+bert_tokenizer, bert_models = get_tokenizer_and_models()
+model = joblib.load("best_logistic_pipeline.joblib")
+
+EXCEL_PATH_ANALYSIS = "app_analysis_results.xlsx"
+EXCEL_PATH_SECONDARY = "processed_output.xlsx"
+
+# --- Caching Heavy Functions --- #
+@st.cache_data(show_spinner=False)
+def cached_fetch_info(app_id):
+    return fetch_info(app_id)
+
+@st.cache_data(show_spinner=False)
+def cached_fetch_policy_text(url):
+    return fetch_policy_text(url)
+
+@st.cache_data(show_spinner=False)
+def cached_extract_segments(text):
+    return extract_segments(text)
+
+@st.cache_data(show_spinner=False)
+def cached_clean_policy_text(text):
+    return clean_text(clean_html(text))
+
+@st.cache_data(show_spinner=False)
+def cached_process_policy_segments(app_df):
+    return process_policy_segments(
+        app_df=app_df,
+        tokenizer=bert_tokenizer,
+        predict_labels=predict_labels,
+        summarize_predicted_labels_paragraph=summarize_predicted_labels_paragraph,
+        min_tokens=10,
+        max_segments=70
+    )
+
+# --- UI Layout --- #
+st.markdown("""
+# PARENT
+### Privacy App **RE**view for Non-Technical users
+
+*“Understand What Your Child’s Apps Are Really Doing — **Know the Risks, Protect Their Clicks**.”*
+""")
+
+col1, col2 = st.columns([2, 1])
+with col1:
+    st.write("")
+with col2:
+    if st.button("🔄 Clear & Search Again"):
+        st.session_state.clear()
+        st.rerun()
+
+# --- Session State Initialization --- #
+if "analysis_started" not in st.session_state:
+    st.session_state.analysis_started = False
+if "selected_app_id" not in st.session_state:
+    st.session_state.selected_app_id = None
+if "search_results" not in st.session_state:
+    st.session_state.search_results = []
+if "selected_option" not in st.session_state:
+    st.session_state.selected_option = None
+if "search_triggered" not in st.session_state:
+    st.session_state.search_triggered = False
+if "analysis_row" not in st.session_state:
+    st.session_state.analysis_row = None
+
+# --- Helpers --- #
+def append_to_excel(df, path):
+    try:
+        existing_df = pd.read_excel(path)
+        combined_df = pd.concat([existing_df, df], ignore_index=True)
+        combined_df.to_excel(path, index=False)
+    except FileNotFoundError:
+        df.to_excel(path, index=False)
+
+def load_excel_if_exists(path):
+    if os.path.exists(path):
+        return pd.read_excel(path)
+    return pd.DataFrame()
+
+def app_exists_in_any_excel(app_id):
+    df_analysis = load_excel_if_exists(EXCEL_PATH_ANALYSIS)
+    df_secondary = load_excel_if_exists(EXCEL_PATH_SECONDARY)
+
+    def safe_check(df):
+        return not df.empty and "APP_ID" in df.columns and not df[df["APP_ID"].str.lower() == app_id.lower()].empty
+
+    return (
+        safe_check(df_analysis),
+        safe_check(df_secondary),
+        df_analysis,
+        df_secondary,
+    )
+
+# --- App Search UI --- #
+if not st.session_state.analysis_started and not st.session_state.search_triggered:
+    user_input = st.text_input("Type an app name to search:", key="user_input")
+
+    if user_input:
+        matches = search_apps_starting_with(user_input)
+        if not matches:
+            st.error("❌ No apps found starting with that name.")
+        else:
+            st.session_state.search_results = matches
+            st.write("Here are the matching apps:")
+            options = [f"{m['title']} — {m['appId']}" for m in matches]
+            selected_option = st.selectbox("Select an app:", options)
+
+            if selected_option:
+                selected_index = options.index(selected_option)
+                selected_app_id = matches[selected_index]["appId"]
+                st.session_state.selected_option = selected_option
+                st.session_state.selected_app_id = selected_app_id
+
+                if st.button("🔍 Search Selected App"):
+                    st.session_state.search_triggered = True
+                    st.rerun()
+
+# --- Handle Cached Analysis (load from Excel) --- #
+if st.session_state.search_triggered and st.session_state.selected_app_id and not st.session_state.analysis_started:
+    app_id = st.session_state.selected_app_id
+    in_analysis, in_secondary, df_analysis, df_secondary = app_exists_in_any_excel(app_id)
+
+    if in_analysis or in_secondary:
+        df_combined = pd.concat([
+            df_analysis[df_analysis["APP_ID"].str.lower() == app_id.lower()],
+            df_secondary[df_secondary["APP_ID"].str.lower() == app_id.lower()]
+        ])
+        if not df_combined.empty:
+            row = df_combined.iloc[0]
+            display_app_header(row)
+            display_app_analysis(row)
+            st.session_state.analysis_row = row.to_dict()
+            st.session_state.analysis_started = True
+
+    else:
+        # Run full analysis
+        st.session_state.analysis_started = True
+        start_time = time.time()
+        progress_container = st.empty()
+        info_container = st.empty()
+
+        progress_bar = progress_container.progress(0)
+        info_container.info(f"🔍 Checking privacy details for **{st.session_state.selected_option}**...")
+
+        progress_bar.progress(5)
+        app_data = cached_fetch_info(app_id)
+        progress_bar.progress(10)
+
+        if app_data:
+            app_df = pd.DataFrame([app_data])
+            app_df["Permissions Used"] = app_df["Perm"].apply(map_permissions_list)
+            app_df["Risk Summary"] = app_df["Permissions Used"].apply(generate_risk_summary)
+            progress_bar.progress(20)
+
+            policy_url = app_data.get("Policy Link")
+            if policy_url:
+                policy_text = cached_fetch_policy_text(policy_url)
+                progress_bar.progress(30)
+
+                if policy_text:
+                    segments = cached_extract_segments(policy_text)
+                    cleaned = "\n".join(segments)
+                    app_df["MergedPolicyText"] = [cleaned]
+                    app_df["Policy Segments"] = [segments]
+
+                    app_df['CleanText'] = app_df['MergedPolicyText'].apply(cached_clean_policy_text)
+                    progress_bar.progress(45)
+
+                    app_df[['Permissions Found', 'Policy Mismatches']] = app_df.apply(check_permissions, axis=1)
+                    progress_bar.progress(55)
+
+                    app_df[['Keyword Frequencies', 'Keyword Matches']] = app_df.apply(extract_permission_keyword_matches, axis=1)
+                    progress_bar.progress(65)
+
+                    app_df, segment_df = cached_process_policy_segments(app_df)
+                    progress_bar.progress(70)
+
+                    app_df = run_gdpr_processing(app_df)
+                    progress_bar.progress(80)
+                    
+                    ##### FALLBACK SECTION STARTS HERE #####
+                    # Compute corrected PD/NPD terms
+                    corrected_pd_words = correct_terms(pd_words)
+                    corrected_npd_words = correct_terms(npd_words)
+                    fallback_data = build_summary(corrected_pd_words, corrected_npd_words)
+
+                    # Fallback logic
+                    summary_col = app_df.get("Data Collection Summary", [""])[0].strip().lower()
+                    should_fallback = (
+                        not summary_col or
+                        "no specific data collection details" in summary_col
+                    )
+
+                    pd_has_data = len(corrected_pd_words) > 0
+                    npd_has_data = len(corrected_npd_words) > 0
+
+                    if should_fallback and (pd_has_data or npd_has_data):
+                        print("🔁 Fallback activated: updating summary and mismatches using keyword traces.")
+                        app_df.at[0, "Data Collection Summary"] = fallback_data
+
+                        found_perms = set()
+                        for perm in perm_label:
+                            terms = final_keyword.get(perm, [])
+                            if terms:
+                                found_perms.add(perm)
+
+                        current_mismatches = set(app_df.at[0, "Policy Mismatches"])
+                        updated_mismatches = list(current_mismatches - found_perms)
+                        app_df.at[0, "Policy Mismatches"] = updated_mismatches
+                        ##### FALLBACK SECTION ENDS HERE #####
+                    
+                    app_df[['Verdict', 'Legal Concerns', 'Recommendations', 'Overview']] = app_df.apply(classify_app_risk, axis=1)
+                    progress_bar.progress(85)
+
+                    app_df['Third_Party_Prediction'] = model.predict(app_df['CleanText'])
+                    if hasattr(model, "predict_proba"):
+                        app_df['Third_Party_Probability'] = model.predict_proba(app_df['CleanText'])[:, 1]
+                    else:
+                        app_df['Third_Party_Probability'] = None
+                    progress_bar.progress(90)
+
+                    app_df['Sharing_Summary'] = app_df.apply(generate_sharing_summary, axis=1)
+                    progress_bar.progress(95)
+                else:
+                    st.error("❌ Could not fetch this app's privacy policy.")
+                progress_bar.progress(100)
+            else:
+                st.error("❌ No privacy policy link provided.")
+                progress_bar.progress(100)
+
+            append_to_excel(app_df, EXCEL_PATH_ANALYSIS)
+            row = app_df.iloc[0]
+            display_app_header(row)
+            display_app_analysis(row)
+            st.session_state.analysis_row = row.to_dict()
+        else:
+            st.error("❌ Failed to fetch app metadata.")
+            progress_bar.progress(100)
+
+        progress_container.empty()
+        info_container.empty()
+        elapsed = time.time() - start_time
+        st.success(f"✅ Analysis completed in {int(elapsed // 60)}m {int(elapsed % 60)}s.")
+
+# --- Recover View on Rerun (for download_button, etc.) --- #
+elif st.session_state.analysis_started and st.session_state.analysis_row:
+    row = pd.Series(st.session_state.analysis_row)
+    display_app_header(row)
+    display_app_analysis(row)
+
+print('app.py loaded')
