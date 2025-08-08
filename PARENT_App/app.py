@@ -29,10 +29,12 @@ from tqdm.auto import tqdm
 tqdm.pandas()
 
 bert_tokenizer, bert_models = get_tokenizer_and_models()
-model = joblib.load("best_logistic_pipeline.joblib")
+model = joblib.load("PARENT_App/best_logistic_pipeline.joblib")
 
-EXCEL_PATH_ANALYSIS = "app_analysis_results.xlsx"
-EXCEL_PATH_SECONDARY = "processed_output.xlsx"
+# Load Excel files from repo folder
+excel_path_analysis = "PARENT_App/data/app_analysis_results.xlsx"
+excel_path_secondary = "PARENT_App/data/processed_output.xlsx"
+
 
 # --- Caching Heavy Functions --- #
 @st.cache_data(show_spinner=False)
