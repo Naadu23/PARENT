@@ -326,7 +326,7 @@ def find_keywords_and_counts(policy_text, keywords):
     return total_count, dict(match_counter)
 
 # --- Match permissions to keyword frequencies ---
-with open("final_keywords.json", "r") as f:
+with open('PARENT_App/data/final_keywords.json', 'r', encoding='utf-8') as f:
     final_keywords = json.load(f)
 
 def extract_permission_keyword_matches(row):
@@ -435,7 +435,8 @@ def classify_app_risk(row):
 
 
 # save
-EXCEL_PATH = "app_analysis_results.xlsx"
+EXCEL_PATH = "PARENT_App/data/app_analysis_results.xlsx"
+
 
 def check_if_app_exists(app_id_or_name, path=EXCEL_PATH):
     if not os.path.exists(path):
