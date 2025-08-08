@@ -185,7 +185,7 @@ label_explanations = {
 
 
 # load final_keywords.json externally before calling generate_summary_paragraph
-with open('final_keywords.json', 'r', encoding='utf-8') as f:
+with open('PARENT_App/data/final_keywords.json', 'r', encoding='utf-8') as f:
     final_keyword = json.load(f)
 
 def split_sentences(text):
@@ -537,6 +537,7 @@ def run_gdpr_processing(app_df, output_dir="output_gdpr"):
     app_df['PDF Path'] = pdf_paths
 
     return app_df
+
 
 
 print("GDPR processing module loaded")
