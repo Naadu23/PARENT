@@ -204,7 +204,7 @@ def process_policy_segments(
         if pred is None:
             segment_labels.append([])
         else:
-            labels = [label for label, res in pred.items() if res["probability"] > 0.7]
+            labels = [label for label, res in pred.items() if res["probability"] > 0.65]
             segment_labels.append(labels)
 
     # === Step 5: Create Prediction Summary column per segment ===
@@ -215,7 +215,7 @@ def process_policy_segments(
         else:
             summary = ", ".join(
                 f"{label.split('_')[-1]} ({res['probability']:.0%})"
-                for label, res in pred.items() if res['probability'] > 0.7
+                for label, res in pred.items() if res['probability'] > 0.65
             )
             prediction_summaries.append(summary)
 
@@ -225,7 +225,7 @@ def process_policy_segments(
         for labels in tqdm(segment_labels, desc="Summarizing segments")
     ]
 
-    # === Step 7: Create a detailed DataFrame of results ===
+    # === Ste0.65: Create a detailed DataFrame of results ===
     segment_df = pd.DataFrame({
         "Segment Text": segments,
         "Predicted Labels": segment_labels,
@@ -246,7 +246,7 @@ def process_policy_segments(
         if pred is not None:
             for label, result in pred.items():
                 prob = result["probability"]
-                if prob > 0.7:
+                if prob > 0.65:
                     label_freq[label] += 1
                     label_max_prob[label] = max(label_max_prob[label], prob)
 

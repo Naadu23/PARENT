@@ -21,7 +21,7 @@ from utils import (
     extract_permission_keyword_matches
 )
 from bert import get_tokenizer_and_models, process_policy_segments, predict_labels, summarize_predicted_labels_paragraph
-from gdpr import run_gdpr_processing, correct_terms, build_summary, final_keyword, pd_words, npd_words, perm_label
+from gdpr import run_gdpr_processing, fallback_extract_words_from_entities, build_summary, final_keyword,perm_label
 from logistic import generate_sharing_summary
 from ui import display_app_header, display_app_analysis
 from tqdm.auto import tqdm
@@ -222,24 +222,22 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
                         progress_bar.progress(80)
                         
                         ##### FALLBACK SECTION STARTS HERE #####
-                        # corrected PD/NPD terms
-                        corrected_pd_words = correct_terms(pd_words)
-                        corrected_npd_words = correct_terms(npd_words)
-                        fallback_data = build_summary(corrected_pd_words, corrected_npd_words)
+                        # Get entities for the current app (assuming row index 0 here)
+                        entities = app_df.at[0, 'entities']
 
-                        # Fallback logic
-                        summary_col = app_df.get("Data Collection Summary", [""])[0].strip().lower()
-                        should_fallback = (
-                            not summary_col or
-                            "no specific data collection details" in summary_col
-                        )
+                        # Extract corrected PD/NPD words *and* detection flags with confidence filtering
+                        pd_words, npd_words, pd_detected, npd_detected = fallback_extract_words_from_entities(entities, confidence_threshold=0.65)
 
-                        pd_has_data = len(corrected_pd_words) > 0
-                        npd_has_data = len(corrected_npd_words) > 0
+                        # Build the summary, passing detection flags too
+                        summary = build_summary(pd_words, npd_words, pd_detected, npd_detected)
 
-                        if should_fallback and (pd_has_data or npd_has_data):
+                        # Check if fallback needed based on existing summary and detection flags
+                        existing_summary = app_df.at[0, "Data Collection Summary"].strip().lower()
+                        should_fallback = (not existing_summary or "no specific data collection details" in existing_summary)
+
+                        if should_fallback and (pd_detected or npd_detected):
                             print("🔁 Fallback activated: updating summary and mismatches using keyword traces.")
-                            app_df.at[0, "Data Collection Summary"] = fallback_data
+                            app_df.at[0, "Data Collection Summary"] = summary
 
                             found_perms = set()
                             for perm in perm_label:
@@ -250,6 +248,7 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
                             current_mismatches = set(app_df.at[0, "Policy Mismatches"])
                             updated_mismatches = list(current_mismatches - found_perms)
                             app_df.at[0, "Policy Mismatches"] = updated_mismatches
+
                         ##### FALLBACK SECTION ENDS HERE #####
 
                         app_df[['Verdict', 'Legal Concerns', 'Recommendations', 'Overview']] = app_df.apply(classify_app_risk, axis=1)

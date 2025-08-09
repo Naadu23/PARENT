@@ -445,47 +445,6 @@ def create_pdf_for_app(app_name, summary_text, output_dir="output_gdpr"):
 
 
 ##### FALL BACK FUNCTION IF NEEDED #####
-def build_summary(pd_words, npd_words):
-    def oxford_join(words):
-        if len(words) == 1:
-            return words[0]
-        return ", ".join(words[:-1]) + ", and " + words[-1]
-    if pd_words and npd_words:
-        pd_text = oxford_join(pd_words)
-        npd_text = oxford_join(npd_words)
-        return (f"It mentions collecting personal information such as {pd_text}, "
-                f"as well as non-personal information like {npd_text}.")
-    elif pd_words:
-        pd_text = oxford_join(pd_words)
-        return f"It mentions collecting personal information such as {pd_text}."
-    elif npd_words:
-        npd_text = oxford_join(npd_words)
-        return f"It mentions collecting non-personal information like {npd_text}."
-    else:
-        return "It does not specify clearly what types of information are collected."
-
-perm_label = [
-    'CAMERA', 'MICROPHONE', 'PHONE_CALL', 'SENSOR', 'SMS',
-    'CALENDAR', 'CONTACTS', 'LOCATION', 'STORAGE', 'PERSISTENTID'
-]
-personal_permissions = {'CAMERA', 'MICROPHONE', 'PHONE_CALL', 'SMS', 'CALENDAR', 'CONTACTS', 'LOCATION'}
-non_personal_permissions = {'SENSOR', 'STORAGE', 'PERSISTENTID'}
-
-pd_words = []
-npd_words = []
-
-for perm in perm_label:
-    terms = final_keyword.get(perm, [])
-    if terms:
-        term = terms[0]
-        if perm in personal_permissions:
-            pd_words.append(term)
-        elif perm in non_personal_permissions:
-            npd_words.append(term)
-    if len(pd_words) >= 5 and len(npd_words) >= 5:
-        break
-pd_words = pd_words[:5]
-npd_words = npd_words[:5]
 
 def correct_terms(terms):
     corrected = []
@@ -496,6 +455,112 @@ def correct_terms(terms):
         else:
             corrected.append(clean_term.capitalize())
     return corrected
+
+# Function to build fallback summary of collected info
+def build_summary(pd_words, npd_words, pd_detected=False, npd_detected=False):
+    def oxford_join(words):
+        # Join list of words with commas and 'and' for the last item
+        if len(words) == 1:
+            return words[0]
+        return ", ".join(words[:-1]) + ", and " + words[-1]
+
+    # Prepare phrase for personal data (PD)
+    if pd_words:
+        # If we have specific PD terms, list them
+        pd_text = f"personal information such as {oxford_join(pd_words)}"
+    elif pd_detected:
+        # If PD detected but no specific terms, use generic phrase
+        pd_text = "personal information"
+    else:
+        # No PD detected at all
+        pd_text = ""
+
+    # Prepare phrase for non-personal data (NPD)
+    if npd_words:
+        # If we have specific NPD terms, list them
+        npd_text = f"non-personal information like {oxford_join(npd_words)}"
+    elif npd_detected:
+        # If NPD detected but no specific terms, use generic phrase
+        npd_text = "non-personal information"
+    else:
+        # No NPD detected at all
+        npd_text = ""
+
+    # Compose final summary string based on available info
+    if pd_text and npd_text:
+        return f"It mentions collecting {pd_text}, as well as {npd_text}."
+    elif pd_text:
+        return f"It mentions collecting {pd_text}."
+    elif npd_text:
+        return f"It mentions collecting {npd_text}."
+    else:
+        return "It does not specify clearly what types of information are collected."
+
+
+# Permissions labels and classifications
+perm_label = [
+    'CAMERA', 'MICROPHONE', 'PHONE_CALL', 'SENSOR', 'SMS',
+    'CALENDAR', 'CONTACTS', 'LOCATION', 'STORAGE', 'PERSISTENTID'
+]
+personal_permissions = {'CAMERA', 'MICROPHONE', 'PHONE_CALL', 'SMS', 'CALENDAR', 'CONTACTS', 'LOCATION'}
+non_personal_permissions = {'SENSOR', 'STORAGE', 'PERSISTENTID'}
+
+
+# Extract and correct PD and NPD terms from entities with confidence filtering
+def fallback_extract_words_from_entities(entities, confidence_threshold=0.6):
+    # Track whether each permission label is detected (regardless of final_keyword)
+    detected_perms = {perm: False for perm in perm_label}
+
+    pd_words = []
+    npd_words = []
+
+    # Collect all entity words by permission label meeting confidence threshold
+    filtered_keywords = {perm: [] for perm in perm_label}
+    for ent in entities:
+        conf = ent.get('confidence', 0)
+        label = ent.get('label_readable')
+        word = ent.get('word')
+
+        if conf >= confidence_threshold and label and word:
+            perm = label.upper()
+            if perm in perm_label:
+                filtered_keywords[perm].append(word)
+                detected_perms[perm] = True  # Mark permission detected
+
+    # For each permission label, attempt to get normalized term from final_keyword
+    for perm in perm_label:
+        if detected_perms[perm]:
+            terms = final_keyword.get(perm, [])
+            if terms:
+                # Use corrected normalized term
+                term = correct_terms([terms[0]])[0]
+            else:
+                # No normalized term available, fallback to None (skip adding raw words)
+                term = None
+
+            # Add terms to personal or non-personal list accordingly
+            if term:
+                if perm in personal_permissions:
+                    pd_words.append(term)
+                elif perm in non_personal_permissions:
+                    npd_words.append(term)
+
+        # Limit max 5 items for each category
+        if len(pd_words) >= 5 and len(npd_words) >= 5:
+            break
+
+    # Flags to indicate detection of personal/non-personal info, even without normalized terms
+    pd_detected = any(detected_perms[p] for p in personal_permissions)
+    npd_detected = any(detected_perms[p] for p in non_personal_permissions)
+
+    # Return corrected words and detection flags
+    return pd_words[:5], npd_words[:5], pd_detected, npd_detected
+
+
+
+
+
+
 
 def run_gdpr_processing(app_df, output_dir="output_gdpr"):
     os.makedirs(output_dir, exist_ok=True)
