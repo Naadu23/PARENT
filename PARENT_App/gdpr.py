@@ -193,7 +193,7 @@ def split_sentences(text):
         text = " ".join(map(str, text)) if isinstance(text, list) else str(text)
     return re.split(r'(?<=[.!?])\s+', text)
 
-def extract_entities(text_segments, threshold=0.7, min_tokens=10, tokenizer=None):
+def extract_entities(text_segments, threshold=0.6, min_tokens=10, tokenizer=None):
     filtered_segments = []
     for seg in text_segments if isinstance(text_segments, list) else [text_segments]:
         token_count = len(tokenizer.tokenize(seg)) if tokenizer else len(seg.split())
@@ -496,12 +496,6 @@ def correct_terms(terms):
         else:
             corrected.append(clean_term.capitalize())
     return corrected
-
-# Compute corrected PD/NPD terms but don't append the summary sentence
-corrected_pd_words = correct_terms(pd_words)
-corrected_npd_words = correct_terms(npd_words)
-fallback_data = build_summary(corrected_pd_words, corrected_npd_words)
-
 
 def run_gdpr_processing(app_df, output_dir="output_gdpr"):
     os.makedirs(output_dir, exist_ok=True)

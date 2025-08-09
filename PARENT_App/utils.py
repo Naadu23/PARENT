@@ -300,13 +300,18 @@ def check_permissions(row):
         keywords = final_keywords.get(perm, [])
         if keyword_check(policy_text, keywords):
             found_perms.append(perm)
-        else:
-            mismatches.append(perm)
+
+    # If nothing found, then all are mismatches
+    if not found_perms:
+        mismatches = permissions_used
+    else:
+        mismatches = [perm for perm in permissions_used if perm not in found_perms]
 
     return pd.Series({
         "Permissions Found": found_perms,
         "Policy Mismatches": mismatches
     })
+
 
 # --- Count matched keyword frequencies and phrases ---
 def find_keywords_and_counts(policy_text, keywords):
@@ -347,8 +352,23 @@ def extract_permission_keyword_matches(row):
 
 # Policy verdict
 def classify_app_risk(row):
+    clean_text = row.get('CleanText', '')
+    if len(clean_text.split()) < 10:
+        # Verdict for short policy text
+        verdict = "⚠️ Policy text too short for analysis; results may be incomplete."
+        recommendation = (
+            "Consider visiting the app's website for a more detailed privacy policy."
+        )
+        overview = "Extracted policy text length too short to perform analysis."
+        legal_issues = []
+        return pd.Series({
+            "Verdict": verdict,
+            "Legal Concerns": legal_issues,
+            "Recommendations": recommendation,
+            "Overview": overview
+        })
+    
     policy_mismatches = row['Policy Mismatches']
-    permissions_found = row['Permissions Found']
 
     legal_flags = {
         "CAMERA": "This app can use the camera, but doesn’t clearly explain why. Children’s images need strong protection.",

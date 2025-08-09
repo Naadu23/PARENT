@@ -187,3 +187,5 @@ def display_app_analysis(row):
 3. Toggle off permissions like Camera, Photos, etc.
 
 💡 *Turning off permissions protects your child’s data.*""")
+        
+
