@@ -6,6 +6,7 @@ import pandas as pd
 import re
 import streamlit as st
 import streamlit.components.v1 as components
+from bert import label_explanations
 
 
 def display_app_header(selected):
@@ -103,7 +104,7 @@ def display_app_analysis(row):
         else:
             st.info("No labels predicted. **Empty PDF** might have been generated.")
 
-
+    # Subheader for data collection summary
     st.subheader("📦 Data Collection Summary")
     summary = (row.get("Data Collection Summary") or "").strip()
     st.markdown(summary if summary else "No summary of data collection was provided.")
@@ -112,8 +113,51 @@ def display_app_analysis(row):
     avg_probs = row.get("Average Label Probabilities", {})
     prediction_summary = str(row.get("Prediction Summary (Freq/Max)") or "").strip()
 
+    # Group ordering for display
+    group_order = [
+        ("Information Type", "Information types detected:"),
+        ("Collection Process", "Collection process:"),
+        ("Purpose", "Purposes for collecting data:")
+    ]
+
+    # Only show if there are predictions or summaries
     if avg_probs or prediction_summary:
         with st.expander("Click to see how confident we are about the data this app collects based on its privacy policy"):
+
+            # Show average confidence levels in grouped, plain-English format
+            if avg_probs:
+                if isinstance(avg_probs, str):
+                    try:
+                        avg_probs = ast.literal_eval(avg_probs)
+                    except Exception:
+                        avg_probs = {}
+
+                if isinstance(avg_probs, dict):
+                    if len(avg_probs) == 0:
+                        st.markdown("Nothing to show")
+                    else:
+                        # Add main heading here
+                        st.markdown("**Average Confidence Levels for Different Data Types:**")
+
+                        # Loop through groups in defined order
+                        for group_key, group_title in group_order:
+                            st.markdown(f"**{group_title}**")
+                            
+                            # Filter and sort labels by highest probability first
+                            group_items = [(label, prob) for label, prob in avg_probs.items() if label.startswith(group_key)]
+                            group_items.sort(key=lambda x: x[1], reverse=True)
+
+                            # Show each label with percentage and plain-English explanation
+                            for label, prob in group_items:
+                                short_label = label.split("_", 1)[1]  # Remove category prefix
+                                explanation = label_explanations.get(label, label)
+                                st.markdown(f"- **{short_label} ({prob:.0%})**: {explanation}")
+
+                            st.markdown("")  # Blank line between groups
+                            
+            st.markdown("---")
+                
+            # Show prediction summary if available
             if prediction_summary:
                 if (
                     prediction_summary is None or
@@ -125,25 +169,6 @@ def display_app_analysis(row):
                 else:
                     st.markdown("**Summary of Prediction Frequency and Confidence:**")
                     st.markdown(prediction_summary)
-
-            if avg_probs:
-                st.markdown("**Average Confidence Levels for Different Data Types:**")
-                if isinstance(avg_probs, str):
-                    try:
-                        avg_probs = ast.literal_eval(avg_probs)
-                    except Exception:
-                        avg_probs = {}
-
-                if isinstance(avg_probs, dict):
-                    if len(avg_probs) == 0:
-                        st.markdown("Nothing to show")
-                    else:
-                        for label, prob in avg_probs.items():
-                            label_name = label.replace('_', ' ').title()
-                            filled_blocks = int(prob * 10)
-                            empty_blocks = 10 - filled_blocks
-                            bar = "▮" * filled_blocks + "▯" * empty_blocks
-                            st.markdown(f"- {label_name}: {bar} {prob:.0%} confident")
     else:
         st.info("This prediction is based on the GDPR policy analysis, no specific data collection predictions were made.")
 
@@ -186,6 +211,6 @@ def display_app_analysis(row):
 2. Scroll to the app
 3. Toggle off permissions like Camera, Photos, etc.
 
-💡 *Turning off permissions protects your child’s data.*""")
+""")
         
 

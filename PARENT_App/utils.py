@@ -62,6 +62,12 @@ import streamlit as st
 import requests
 import time
 
+import re
+from bs4 import BeautifulSoup
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+
 def fetch_info(app_id):
     try:
         info = app(app_id)
@@ -79,7 +85,11 @@ def fetch_info(app_id):
         print(f"❌ Error fetching info for {app_id}: {e}")
         return None
 
+
+
 def search_apps_starting_with(query, n_results=10):
+    query = query.strip()
+    query = re.sub(r'\s{2,}', ' ', query)
     raw_results = search(query, lang='en', country='us')
     filtered = [r for r in raw_results if r["title"].lower().startswith(query.lower())]
     return filtered[:n_results]
@@ -227,11 +237,6 @@ def fetch_policy_text(url):
 stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()
 
-import re
-from bs4 import BeautifulSoup
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
 
 stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()

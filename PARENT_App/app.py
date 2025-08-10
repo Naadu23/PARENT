@@ -8,7 +8,6 @@ import os
 
 from utils import (
     search_apps_starting_with,
-    check_if_app_exists,
     fetch_info,
     classify_app_risk,
     map_permissions_list,
@@ -169,6 +168,8 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
             row = df_combined.iloc[0]
             display_app_header(row)
             display_app_analysis(row)
+            feedback_url = "https://forms.office.com/Pages/ResponsePage.aspx?id=nKagUU8OPUu2QhLgExmGNdZ3ApRDp8pFkU4wg8uTI3ZUM0U4TEdDQTg2OFREVVdGMU5OV1NBSVRFSi4u&origin=Invitation&channel=1"
+            st.info(f"📢 [Click here to submit feedback]({feedback_url})")
             st.session_state.analysis_row = row.to_dict()
             st.session_state.analysis_started = True
 

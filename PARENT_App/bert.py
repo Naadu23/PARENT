@@ -44,6 +44,30 @@ label_names = [
     "Purpose_Legal requirement"
 ]
 
+label_explanations = {
+    # Information Type
+    "Information Type_IP address and device IDs": "Numbers or codes that identify your device or internet connection, eg. your phone’s ID or your home IP address.",
+    "Information Type_Contact information": "Ways to reach you directly, eg. your email address, phone number, or mailing address.",
+    "Information Type_Location": "Where you are or have been, eg. GPS location or city name.",
+    "Information Type_Personal identifier": "Data that directly names you, eg. your full name or national ID number.",
+    "Information Type_Health, genetic, or biometric data": "Sensitive details about your body or identity, eg. medical history, fingerprints, or DNA.",
+    "Information Type_Computer information": "Technical details about your device, eg. operating system, browser type, or device model.",
+    "Information Type_User online activities": "What you do online, eg. websites visited, clicks, or app activity.",
+    "Information Type_Generic personal information": "General facts about you, eg. hobbies, likes, or lifestyle preferences.",
+
+    # Collection Process
+    "Collection Process_Collected on first-party website/app": "Data you give directly to the company through their site or app, eg. filling out a form.",
+    "Collection Process_Shared by first party with a third party": "The company gives your data to another organization, eg. advertisers or partners.",
+
+    # Purpose
+    "Purpose_Advertising or marketing": "Used to promote products or services to you, eg. sending promotional emails.",
+    "Purpose_Analytics or research": "Used to study trends or improve services, eg. tracking app performance.",
+    "Purpose_Essential service or feature": "Needed to make the service work, eg. logging you in or processing payments.",
+    "Purpose_Service operation and security": "Used to keep the service running safely, eg. preventing fraud or hacking.",
+    "Purpose_Legal requirement": "Collected because the law says it must be, eg. keeping tax records."
+}
+
+
 @st.cache_resource
 def load_models():
     tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
