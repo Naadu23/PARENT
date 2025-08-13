@@ -35,7 +35,7 @@ def generate_sharing_summary(row):
     likely_shared = logistic_prob > 0.3 or bert_avg_prob > 0.65
 
     if likely_shared:
-        lines = [f"⚠️ **{app_name}** is likely to share your or your child’s data with other companies.\n"]
+        lines = [f"⚠️ **{app_name}** is likely to share your child’s data with other companies.\n"]
         
         if logistic_prob > 0:
             lines.append(f"- It might say this clearly in the privacy policy (**{logistic_prob*100:.0f}% chance**).")
