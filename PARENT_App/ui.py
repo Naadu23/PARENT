@@ -85,7 +85,6 @@ def display_app_analysis(row):
 
     # --- Expander for more details ---
     with st.expander("Click to see how confident we are about this app's GDPR alignment based on its privacy policy"):
-
         # 1. PDF Download
         st.markdown("**Download GDPR Summary PDF**")
         pdf_path = row.get('PDF Path', None)
@@ -104,9 +103,6 @@ def display_app_analysis(row):
             )
         else:
             st.info("No PDF available for download.")
-
-
-        
 
         # 2. Top Labels
         st.markdown("**GDPR Labels**")

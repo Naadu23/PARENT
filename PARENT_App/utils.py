@@ -88,11 +88,29 @@ def fetch_info(app_id):
 
 
 def search_apps_starting_with(query, n_results=10):
+    import re
+    from google_play_scraper import search
+
     query = query.strip()
     query = re.sub(r'\s{2,}', ' ', query)
-    raw_results = search(query, lang='en', country='us')
-    filtered = [r for r in raw_results if r["title"].lower().startswith(query.lower())]
+
+    try:
+        raw_results = search(query, lang='en', country='us')
+        if not raw_results:
+            return []
+    except Exception:
+        # If scraper fails
+        return []
+
+    # Make sure each item is a dict with a "title"
+    filtered = [
+        r for r in raw_results
+        if isinstance(r, dict) and "title" in r and isinstance(r["title"], str)
+        and r["title"].lower().startswith(query.lower())
+    ]
+
     return filtered[:n_results]
+
 
 #perm label
 perm_label = ['CAMERA', 'MICROPHONE', 'PHONE_CALL', 'SENSOR', 'SMS',
