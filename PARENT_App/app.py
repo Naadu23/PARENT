@@ -110,11 +110,13 @@ def append_to_excel(df, path):
     except FileNotFoundError:
         df.to_excel(path, index=False)
 
+
 def load_excel_if_exists(path):
     if os.path.exists(path):
-        return pd.read_excel(path)
+        df = pd.read_excel(path)
+        df = df.fillna("")
+        return df
     return pd.DataFrame()
-
 def app_exists_in_any_excel(app_id):
     df_analysis = load_excel_if_exists(EXCEL_PATH_ANALYSIS)
     df_secondary = load_excel_if_exists(EXCEL_PATH_SECONDARY)

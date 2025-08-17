@@ -17,6 +17,9 @@ def display_app_header(selected):
     age_group = selected.get("Age Group", "N/A")
     friendly_explanation = selected.get("Overview", "No explanation available.")
 
+    
+
+
     col1, col2 = st.columns([1, 6])
     with col1:
         st.image(icon_url, width=80)
@@ -28,8 +31,19 @@ def display_app_header(selected):
         else:
             st.info("Privacy Policy URL not available.")
 
-    st.markdown("---")
-    st.markdown(friendly_explanation)
+    # Normalize for matching
+    text_lower = friendly_explanation.lower()
+
+    if "too short" in text_lower:
+        st.warning(friendly_explanation)   # yellow
+    elif "concern" in text_lower:
+        st.error(friendly_explanation)     # red
+    elif "explained" in text_lower or "clearly" in text_lower:
+        st.success(friendly_explanation)   # green
+    else:
+        st.info(friendly_explanation)      # blue (default)
+        
+    #st.markdown("---")
 
 def format_bullet_points(text, emoji=""):
     if isinstance(text, str):
@@ -75,7 +89,9 @@ def display_app_analysis(row):
         # 1. PDF Download
         st.markdown("**Download GDPR Summary PDF**")
         pdf_path = row.get('PDF Path', None)
-        if pdf_path and os.path.exists(pdf_path):
+
+        # Make sure pdf_path is a non-empty string
+        if isinstance(pdf_path, str) and pdf_path.strip() and os.path.exists(pdf_path):
             file_name = os.path.basename(pdf_path)
             with open(pdf_path, "rb") as f:
                 pdf_bytes = f.read()
@@ -88,6 +104,9 @@ def display_app_analysis(row):
             )
         else:
             st.info("No PDF available for download.")
+
+
+        
 
         # 2. Top Labels
         st.markdown("**GDPR Labels**")
