@@ -27,8 +27,13 @@ from tqdm.auto import tqdm
 
 tqdm.pandas()
 
-bert_tokenizer, bert_models = get_tokenizer_and_models()
-model = joblib.load("PARENT_App/best_logistic_pipeline.joblib")
+@st.cache_resource
+def load_models():
+    tokenizer, models = get_tokenizer_and_models()
+    logistic_model = joblib.load("PARENT_App/best_logistic_pipeline.joblib")
+    return tokenizer, models, logistic_model
+
+bert_tokenizer, bert_models, model = load_models()
 
 # Load Excel files from repo folder
 EXCEL_PATH_ANALYSIS = "PARENT_App/data/app_analysis_results.xlsx"
@@ -61,6 +66,7 @@ def cached_process_policy_segments(app_df):
         min_tokens=10,
         max_segments=70
     )
+
 
 # --- UI Layout --- #
 st.markdown("### 📱PARENT : *Privacy App REview for Non-Technical users*")
@@ -111,6 +117,7 @@ def append_to_excel(df, path):
         df.to_excel(path, index=False)
 
 
+@st.cache_data
 def load_excel_if_exists(path):
     if os.path.exists(path):
         df = pd.read_excel(path)
