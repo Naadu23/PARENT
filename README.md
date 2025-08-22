@@ -20,7 +20,7 @@ PARENT is a hybrid framework and interactive web tool designed to help parents u
 
 ##  Project Structure
 
-PARENT/
+```PARENT/
 │_ training_data/
 ├── requirements.txt # Python dependencies
 └── PARENT_App/
@@ -36,7 +36,7 @@ PARENT/
 ├── app.py # Main app entrypoint
 ├── utils.py # Helper functions
 └── logistic.py # Logistic regression pipeline
-
+```
 
 # install dependencies
 pip install -r requirements.txt
