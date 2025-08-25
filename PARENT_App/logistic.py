@@ -2,22 +2,21 @@
 print("loading logistic.py")
 import pandas as pd
 import re
-# Add human-readable summary with both prediction and probability
+# Add summary with both prediction and probability
 
 def extract_bert_sharing_info(row):
-    # Extract freq from 'Prediction Summary (Freq/Max)'
+    # get freq from 'Prediction Summary (Freq/Max)'
     freq = 0
     freq_max_str = row.get('Prediction Summary (Freq/Max)', '')
 
-    # Regex to match exact phrase with spaces (case-sensitive)
+    # find phrase
     freq_match = re.search(r'Shared by first party with a third party \(Freq: (\d+),', freq_max_str)
     if freq_match:
         freq = int(freq_match.group(1))
 
-    # Extract avg_prob from dict — find key that ends with 'Shared by first party with a third party'
+    # get avg_prob
     avg_prob = 0.0
     avg_probs_dict = row.get('Average Label Probabilities', {})
-    # Find key containing the phrase ignoring prefix
     key_to_find = 'Shared by first party with a third party'
     for k, v in avg_probs_dict.items():
         if k.endswith(key_to_find):
