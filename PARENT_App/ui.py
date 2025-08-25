@@ -6,7 +6,7 @@ import pandas as pd
 import re
 import streamlit as st
 import streamlit.components.v1 as components
-from bert import label_explanations
+from bert1 import label_explanations
 
 
 def display_app_header(selected):

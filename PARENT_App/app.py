@@ -19,7 +19,7 @@ from utils import (
     check_permissions,
     extract_permission_keyword_matches
 )
-from bert import get_tokenizer_and_models, process_policy_segments, predict_labels, summarize_predicted_labels_paragraph
+from bert1 import get_tokenizer_and_models, process_policy_segments, predict_labels, summarize_predicted_labels_paragraph
 from gdpr import run_gdpr_processing, fallback_extract_words_from_entities, build_summary, final_keyword,perm_label
 from logistic import generate_sharing_summary
 from ui import display_app_header, display_app_analysis
