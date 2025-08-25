@@ -39,7 +39,7 @@ bert_tokenizer, bert_models, model = load_models()
 EXCEL_PATH_ANALYSIS = "PARENT_App/data/app_analysis_results.xlsx"
 EXCEL_PATH_SECONDARY = "PARENT_App/data/processed_output.xlsx"
 
-# --- Caching Heavy Functions --- #
+# Caching
 @st.cache_data(show_spinner=False)
 def cached_fetch_info(app_id):
     return fetch_info(app_id)
@@ -68,7 +68,7 @@ def cached_process_policy_segments(app_df):
     )
 
 
-# --- UI Layout --- #
+# UI
 st.markdown("### 📱PARENT : *Privacy App REview for Non-Technical users*")
 
 st.markdown(
@@ -93,7 +93,7 @@ with col2:
         st.session_state.clear()
         st.rerun()
 
-# --- Session State Initialization --- #
+# initiate session
 if "analysis_started" not in st.session_state:
     st.session_state.analysis_started = False
 if "selected_app_id" not in st.session_state:
@@ -107,7 +107,7 @@ if "search_triggered" not in st.session_state:
 if "analysis_row" not in st.session_state:
     st.session_state.analysis_row = None
 
-# --- Helpers --- #
+
 def append_to_excel(df, path):
     try:
         existing_df = pd.read_excel(path)
@@ -138,7 +138,7 @@ def app_exists_in_any_excel(app_id):
         df_secondary,
     )
 
-# --- App Search UI --- #
+# Search UI
 if not st.session_state.analysis_started and not st.session_state.search_triggered:
     st.markdown('<h2 style="font-weight:700; font-size:22px; margin-bottom:10px;">Search for an App</h2>', unsafe_allow_html=True)
     user_input = st.text_input("", placeholder="Type an app name to search. Eg: \"TikTok\"", key="user_input")
@@ -163,7 +163,7 @@ if not st.session_state.analysis_started and not st.session_state.search_trigger
                     st.session_state.search_triggered = True
                     st.rerun()
 
-# --- Handle Cached Analysis (load from Excel) --- #
+# load from Excel
 if st.session_state.search_triggered and st.session_state.selected_app_id and not st.session_state.analysis_started:
     app_id = st.session_state.selected_app_id
     in_analysis, in_secondary, df_analysis, df_secondary = app_exists_in_any_excel(app_id)
@@ -232,21 +232,16 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
                         progress_bar.progress(80)
                         
                         ##### FALLBACK SECTION STARTS HERE #####
-                        # Get entities for the current app (assuming row index 0 here)
                         entities = app_df.at[0, 'entities']
-
-                        # Extract corrected PD/NPD words *and* detection flags with confidence filtering
                         pd_words, npd_words, pd_detected, npd_detected = fallback_extract_words_from_entities(entities, confidence_threshold=0.65)
-
-                        # Build the summary, passing detection flags too
                         summary = build_summary(pd_words, npd_words, pd_detected, npd_detected)
 
-                        # Check if fallback needed based on existing summary and detection flags
+                        # Check if fallback needed based on existing summary and detection
                         existing_summary = app_df.at[0, "Data Collection Summary"].strip().lower()
                         should_fallback = (not existing_summary or "no specific data collection details" in existing_summary)
 
                         if should_fallback and (pd_detected or npd_detected):
-                            print("🔁 Fallback activated: updating summary and mismatches using keyword traces.")
+                            print(" Fallback activated: updating summary and mismatches using keyword traces.")
                             app_df.at[0, "Data Collection Summary"] = summary
 
                             found_perms = set()
@@ -305,7 +300,7 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
         elapsed = time.time() - start_time
         st.success(f"✅ Analysis completed in {int(elapsed // 60)}m {int(elapsed % 60)}s.")
 
-# --- Recover View on Rerun (for download_button, etc.) --- #
+# Recover View on Rerunfor download_button
 elif st.session_state.analysis_started and st.session_state.analysis_row:
     row = pd.Series(st.session_state.analysis_row)
     display_app_header(row)

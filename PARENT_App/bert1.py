@@ -16,6 +16,7 @@ from collections import defaultdict
 from itertools import chain
 import pandas as pd
 from tqdm import tqdm
+import time
 
 tqdm.pandas()
 transformers_logging.set_verbosity_error()
