@@ -12,10 +12,9 @@ from fpdf import FPDF
 
 tqdm.pandas()
 
-# Initialize NER pipeline once
+# Initiate NER pipeline
 ner_pipe = pipeline("token-classification", model="PaDaS-Lab/gdpr-privacy-policy-ner", aggregation_strategy="simple")
 
-# Load correction map and label/category mappings
 # Label mappings for GDPR entities
 label_mapping_privacy = {
     "DC": "Data Controller", "DP": "Data Processor", "DPO": "Data Protection Officer",
@@ -184,7 +183,7 @@ label_explanations = {
 }
 
 
-# load final_keywords.json externally before calling generate_summary_paragraph
+# load final_keywords.json 
 with open('PARENT_App/data/final_keywords.json', 'r', encoding='utf-8') as f:
     final_keyword = json.load(f)
 
@@ -270,7 +269,7 @@ def summarize_coverage(row):
     return ", ".join(mentioned) if mentioned else "No GDPR concepts detected"
 
 def generate_summary_paragraph(entities):
-    # Use correction_map and final_keyword from outer scope or pass as params if preferred
+    # Use correction_map and final_keyword
     cat_to_words = {}
     for ent in entities:
         label = ent.get('label_readable')
@@ -396,16 +395,16 @@ def get_max_labels(entity_list):
 
 
 def create_pdf_for_app(app_name, summary_text, output_dir="output_gdpr"):
-    # Clean text for PDF (remove unicode)
+    # Clean text for PDF by removing unicode
     clean_text = unicodedata.normalize('NFKD', str(summary_text)).encode('ascii', 'ignore').decode('ascii')
 
-    # Sanitize app name to safe filename (lowercase)
+    # clean app name to safe filename
     safe_name = "".join(c if c.isalnum() else " " for c in app_name).lower().replace(" ", "_")
 
-    # Ensure output directory exists
+    # check output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # PDF path based on sanitized app name
+    # PDF path based on cleaned app name
     pdf_path = os.path.join(output_dir, f"{safe_name}.pdf")
 
     # If PDF already exists, skip creating
@@ -456,7 +455,7 @@ def correct_terms(terms):
             corrected.append(clean_term.capitalize())
     return corrected
 
-# Function to build fallback summary of collected info
+# build fallback summary of collected info
 def build_summary(pd_words, npd_words, pd_detected=False, npd_detected=False):
     def oxford_join(words):
         # Join list of words with commas and 'and' for the last item
@@ -466,27 +465,24 @@ def build_summary(pd_words, npd_words, pd_detected=False, npd_detected=False):
 
     # Prepare phrase for personal data (PD)
     if pd_words:
-        # If we have specific PD terms, list them
         pd_text = f"personal information such as {oxford_join(pd_words)}"
     elif pd_detected:
         # If PD detected but no specific terms, use generic phrase
         pd_text = "personal information"
     else:
-        # No PD detected at all
         pd_text = ""
 
     # Prepare phrase for non-personal data (NPD)
     if npd_words:
-        # If we have specific NPD terms, list them
+        # If specific NPD terms, list them
         npd_text = f"non-personal information like {oxford_join(npd_words)}"
     elif npd_detected:
         # If NPD detected but no specific terms, use generic phrase
         npd_text = "non-personal information"
     else:
-        # No NPD detected at all
         npd_text = ""
 
-    # Compose final summary string based on available info
+    # final summary based on available info
     if pd_text and npd_text:
         return f"It mentions collecting {pd_text}, as well as {npd_text}."
     elif pd_text:
@@ -508,13 +504,13 @@ non_personal_permissions = {'SENSOR', 'STORAGE', 'PERSISTENTID'}
 
 # Extract and correct PD and NPD terms from entities with confidence filtering
 def fallback_extract_words_from_entities(entities, confidence_threshold=0.6):
-    # Track whether each permission label is detected (regardless of final_keyword)
+    #  is perm detected?
     detected_perms = {perm: False for perm in perm_label}
 
     pd_words = []
     npd_words = []
 
-    # Collect all entity words by permission label meeting confidence threshold
+    # get entity words by permission label meeting confidence threshold
     filtered_keywords = {perm: [] for perm in perm_label}
     for ent in entities:
         conf = ent.get('confidence', 0)
@@ -527,7 +523,7 @@ def fallback_extract_words_from_entities(entities, confidence_threshold=0.6):
                 filtered_keywords[perm].append(word)
                 detected_perms[perm] = True  # Mark permission detected
 
-    # For each permission label, attempt to get normalized term from final_keyword
+    # get normalized term from final_keyword
     for perm in perm_label:
         if detected_perms[perm]:
             terms = final_keyword.get(perm, [])
@@ -535,21 +531,20 @@ def fallback_extract_words_from_entities(entities, confidence_threshold=0.6):
                 # Use corrected normalized term
                 term = correct_terms([terms[0]])[0]
             else:
-                # No normalized term available, fallback to None (skip adding raw words)
                 term = None
 
-            # Add terms to personal or non-personal list accordingly
+            # Add terms to personal or non-personal list
             if term:
                 if perm in personal_permissions:
                     pd_words.append(term)
                 elif perm in non_personal_permissions:
                     npd_words.append(term)
 
-        # Limit max 5 items for each category
+        # Limit max 5 items
         if len(pd_words) >= 5 and len(npd_words) >= 5:
             break
 
-    # Flags to indicate detection of personal/non-personal info, even without normalized terms
+    # indicate detection of personal/non-personal info
     pd_detected = any(detected_perms[p] for p in personal_permissions)
     npd_detected = any(detected_perms[p] for p in non_personal_permissions)
 
@@ -573,19 +568,19 @@ def run_gdpr_processing(app_df, output_dir="output_gdpr"):
     for col in summaries.columns:
         app_df[col] = summaries[col]
 
-    # Generate label_sentence_summary (your top labels source)
+    # Generate label_sentence_summary
     app_df['label_sentence_summary'] = app_df.progress_apply(group_labels_by_sentence, axis=1)
 
-    # Apply get_max_labels to generate Top Labels nicely formatted
+    # generate Top Labels
     app_df['Top Labels'] = app_df['entities'].apply(get_max_labels)
 
-    # Add GDPR Summary Coverage if needed
+    # Add GDPR Summary Coverage
     app_df['GDPR Summary Coverage'] = app_df.apply(summarize_coverage, axis=1)
 
-    # Generate GDPR Summary paragraph if needed
+    # Generate GDPR Summary
     app_df['GDPR Summary'] = app_df['entities'].progress_apply(generate_summary_paragraph)
 
-    # Create PDFs and add PDF paths to DataFrame, using label_sentence_summary as content
+    # Create PDFs and add to df
     pdf_paths = []
     for _, row in tqdm(app_df.iterrows(), total=len(app_df)):
         app_name = row.get("App Name") or "app"
