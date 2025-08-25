@@ -21,13 +21,10 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 import pandas as pd
 from pathlib import Path
-import pickle #save jobs
 import random
 import re
 import requests
 from bs4 import BeautifulSoup
-import shutil
-import sys
 import time
 from tqdm import tqdm  # Import tqdm for the progress bar
 from tqdm.auto import tqdm
@@ -58,7 +55,6 @@ from sklearn.utils.class_weight import compute_class_weight
 #!pip install joblib scikit-learn nltk --quiet
 #!pip install transformers datasets scikit-learn tqdm joblib --quiet
 #!pip install streamlit pyngrok
-import streamlit as st
 import requests
 import time
 
@@ -102,7 +98,7 @@ def search_apps_starting_with(query, n_results=10):
         # If scraper fails
         return []
 
-    # Make sure each item is a dict with a "title"
+    # each item is a dict with a "title"
     filtered = [
         r for r in raw_results
         if isinstance(r, dict) and "title" in r and isinstance(r["title"], str)
@@ -149,9 +145,8 @@ def map_permissions_list(raw_perms):
     for cat in raw_perms:
         cat_lower = cat.lower()
 
-        # Special case for 'other' + 'view network connection'
+        # Special case for 'other' with 'view network connection'
         if cat_lower == 'other':
-            # Check if 'view network connection' is in the values for this key
             perms_in_other = raw_perms[cat]
             if any('view network connection' in p.lower() for p in perms_in_other):
                 if 'PERSISTENTID' not in mapped_perms:
@@ -223,7 +218,7 @@ def fetch_policy_text(url):
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
 
-        if len(response.text) > 1000:  # crude quality check
+        if len(response.text) > 1000:  # quality check
             print("✅ Standard fetch succeeded.")
             return response.text
         else:
@@ -234,12 +229,10 @@ def fetch_policy_text(url):
     # Playwright fallback
     try:
         from playwright.sync_api import sync_playwright
-        # from playwright_stealth import stealth_sync  # Optional: uncomment if you really need stealth
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
-            # stealth_sync(page)  # Optional: use if site uses bot detection
             page.goto(url, wait_until="networkidle", timeout=30000)
             time.sleep(1)  # Let JS finish loading
             html = page.content()
@@ -256,9 +249,6 @@ stop_words = set(stopwords.words("english"))
 lemmatizer = WordNetLemmatizer()
 
 
-stop_words = set(stopwords.words("english"))
-lemmatizer = WordNetLemmatizer()
-
 def clean_html(raw_html):
     soup = BeautifulSoup(raw_html, "html.parser")
     text = soup.get_text(separator=' ', strip=True)
@@ -272,14 +262,14 @@ def extract_segments(html):
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
 
-    # Insert newline after block-level elements (to imitate paragraph breaks)
+    # Insert newline after block-level elements for paragraph breaks
     for tag in soup.find_all(["p", "li", "br", "div", "section", "h1", "h2", "h3", "h4"]):
         tag.insert_after("\n")
 
     # Get text
     text = soup.get_text()
 
-    # Now split into segments
+    # split into segments
     segments = [seg.strip() for seg in text.split("\n") if seg.strip()]
     return segments
 
@@ -287,13 +277,9 @@ def extract_segments(html):
 def clean_text(text):
     if not isinstance(text, str):
         return ""
-    # Lowercase
     text = text.lower()
-    # Remove non-alphabetic characters
     text = re.sub(r'[^a-z\s]', '', text)
-    # Tokenize
     tokens = word_tokenize(text)
-    # Remove stopwords and lemmatize
     cleaned_tokens = [
         lemmatizer.lemmatize(word)
         for word in tokens
@@ -304,14 +290,14 @@ def clean_text(text):
 
 
 # Keyword - rule based for mismatch
-# --- Helper to check if keywords appear ---
+# check if keywords appear
 def keyword_check(policy_text, keywords):
     if not isinstance(policy_text, str):
         return False
     policy_text = policy_text.lower()
     return any(keyword in policy_text for keyword in keywords)
 
-# --- Check if permissions are mentioned in policy ---
+# Check if permissions are mentioned in policy
 def check_permissions(row):
     policy_text = row['CleanText']
     permissions_used = row['Permissions Used']
@@ -336,7 +322,7 @@ def check_permissions(row):
     })
 
 
-# --- Count matched keyword frequencies and phrases ---
+# Count matched keyword frequencies and phrases
 def find_keywords_and_counts(policy_text, keywords):
     if not isinstance(policy_text, str):
         return 0, {}
@@ -353,7 +339,7 @@ def find_keywords_and_counts(policy_text, keywords):
     total_count = sum(match_counter.values())
     return total_count, dict(match_counter)
 
-# --- Match permissions to keyword frequencies ---
+# Match permissions to keyword frequencies
 with open('PARENT_App/data/final_keywords.json', 'r', encoding='utf-8') as f:
     final_keywords = json.load(f)
 
