@@ -1,11 +1,9 @@
 
 import ast
-import base64
 import os
 import pandas as pd
 import re
 import streamlit as st
-import streamlit.components.v1 as components
 from bert1 import label_explanations
 
 
@@ -41,7 +39,7 @@ def display_app_header(selected):
     elif "explained" in text_lower or "clearly" in text_lower:
         st.success(friendly_explanation)   # green
     else:
-        st.info(friendly_explanation)      # blue (default)
+        st.info(friendly_explanation)      # blue
         
     #st.markdown("---")
 
@@ -75,7 +73,7 @@ def display_app_analysis(row):
     else:
         st.info("No legal concerns were found.")
 
-        # --- Show GDPR Summary directly ---
+        # GDPR Summary
     st.subheader("📋 GDPR Summary")
     gdpr_summary = row.get("GDPR Summary", "")
     if gdpr_summary:
@@ -83,13 +81,12 @@ def display_app_analysis(row):
     else:
         st.info("No GDPR summary available.")
 
-    # --- Expander for more details ---
+    # Expand
     with st.expander("Click to see how confident we are about this app's GDPR alignment based on its privacy policy"):
-        # 1. PDF Download
+        # PDF Download
         st.markdown("**Download GDPR Summary PDF**")
         pdf_path = row.get('PDF Path', None)
 
-        # Make sure pdf_path is a non-empty string
         if isinstance(pdf_path, str) and pdf_path.strip() and os.path.exists(pdf_path):
             file_name = os.path.basename(pdf_path)
             with open(pdf_path, "rb") as f:
@@ -104,7 +101,7 @@ def display_app_analysis(row):
         else:
             st.info("No PDF available for download.")
 
-        # 2. Top Labels
+        # Top Labels
         st.markdown("**GDPR Labels**")
         max_labels = row.get("Top Labels", [])
         if isinstance(max_labels, str):
@@ -119,7 +116,7 @@ def display_app_analysis(row):
         else:
             st.info("No labels predicted. **Empty PDF** might have been generated.")
 
-    # Subheader for data collection summary
+    # data collection summary
     st.subheader("📦 Data Collection Summary")
     summary = (row.get("Data Collection Summary") or "").strip()
     st.markdown(summary if summary else "No summary of data collection was provided.")
@@ -139,7 +136,7 @@ def display_app_analysis(row):
     if avg_probs or prediction_summary:
         with st.expander("Click to see how confident we are about the data this app collects based on its privacy policy"):
 
-            # Show average confidence levels in grouped, plain-English format
+            # Show average confidence levels 
             if avg_probs:
                 if isinstance(avg_probs, str):
                     try:
@@ -151,10 +148,9 @@ def display_app_analysis(row):
                     if len(avg_probs) == 0:
                         st.markdown("Nothing to show")
                     else:
-                        # Add main heading here
                         st.markdown("**Average Confidence Levels for Different Data Types:**")
 
-                        # Loop through groups in defined order
+                        # Loop through groups
                         for group_key, group_title in group_order:
                             st.markdown(f"**{group_title}**")
                             
@@ -162,13 +158,13 @@ def display_app_analysis(row):
                             group_items = [(label, prob) for label, prob in avg_probs.items() if label.startswith(group_key)]
                             group_items.sort(key=lambda x: x[1], reverse=True)
 
-                            # Show each label with percentage and plain-English explanation
+                            # Show each label with percentage and explanation
                             for label, prob in group_items:
-                                short_label = label.split("_", 1)[1]  # Remove category prefix
+                                short_label = label.split("_", 1)[1] 
                                 explanation = label_explanations.get(label, label)
                                 st.markdown(f"- **{short_label} ({prob:.0%})**: {explanation}")
 
-                            st.markdown("")  # Blank line between groups
+                            st.markdown("")  
                             
             st.markdown("---")
                 

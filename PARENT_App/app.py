@@ -300,7 +300,7 @@ if st.session_state.search_triggered and st.session_state.selected_app_id and no
         elapsed = time.time() - start_time
         st.success(f"✅ Analysis completed in {int(elapsed // 60)}m {int(elapsed % 60)}s.")
 
-# Recover View on Rerunfor download_button
+# Recover View on rerun for download_button
 elif st.session_state.analysis_started and st.session_state.analysis_row:
     row = pd.Series(st.session_state.analysis_row)
     display_app_header(row)
