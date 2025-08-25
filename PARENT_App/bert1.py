@@ -98,13 +98,12 @@ def model_predict(model, inputs):
         probs = torch.sigmoid(outputs.squeeze()).cpu().numpy()
     return probs
 
-import time
 
 def predict_labels(segments, batch_size=16):
     results = [{} for _ in segments]
 
     for start in range(0, len(segments), batch_size):
-        # --- Tokenize once per batch ---
+        # Tokenize once per batch
         batch = segments[start:start + batch_size]
         inputs = tokenizer(
             batch,
@@ -115,7 +114,7 @@ def predict_labels(segments, batch_size=16):
         )
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
-        # --- Now run ALL models on the same tokenized batch ---
+        # running all models on the same tokenized batch
         for label, model in models.items():
             start_time = time.time()
 
@@ -190,7 +189,6 @@ def summarize_predicted_labels_paragraph(label_list):
     paragraph = ". ".join(parts).strip() + "."
     return paragraph if paragraph != "." else "No specific data collection details were detected."
 
-# === Main prediction pipeline on app_df ===
 # Main analyze function
 
 
@@ -202,10 +200,10 @@ def process_policy_segments(
     min_tokens=10,
     max_segments=100
 ):
-    # === Step 1: Get segments for the selected app ===
+    # segments for the selected app
     segments = app_df["Policy Segments"].iloc[0]
 
-    # === Step 1.5: Filter segments based on token count ===
+    # Filter segments based on token count
     filtered_segments = []
     filtered_indices = []
 
@@ -215,20 +213,20 @@ def process_policy_segments(
             filtered_segments.append(seg)
             filtered_indices.append(i)
 
-    # === Limit to MAX_SEGMENTS after filtering ===
+    # Limit to MAX_SEGMENTS
     if len(filtered_segments) > max_segments:
         filtered_segments = filtered_segments[:max_segments]
         filtered_indices = filtered_indices[:max_segments]
 
-    # === Step 2: Run predictions only on filtered segments ===
+    # Run predictions on filtered segments
     segment_predictions_filtered = predict_labels(filtered_segments)
 
-    # === Step 3: Initialize full list of predictions with None for skipped segments ===
+    # Initialize full list of predictions
     segment_predictions = [None] * len(segments)
     for idx, pred in zip(filtered_indices, segment_predictions_filtered):
         segment_predictions[idx] = pred
 
-    # === Step 4: Get predicted labels for each segment or empty list if skipped ===
+    # predicted labels for each segment
     segment_labels = []
     for pred in tqdm(segment_predictions, desc="Filtering predicted labels"):
         if pred is None:
@@ -237,7 +235,7 @@ def process_policy_segments(
             labels = [label for label, res in pred.items() if res["probability"] > 0.65]
             segment_labels.append(labels)
 
-    # === Step 5: Create Prediction Summary column per segment ===
+    # Prediction Summary
     prediction_summaries = []
     for pred in segment_predictions:
         if pred is None:
@@ -249,13 +247,13 @@ def process_policy_segments(
             )
             prediction_summaries.append(summary)
 
-    # === Step 6: Create human-readable summaries for each segment ===
+    # simple summaries
     segment_summaries = [
         summarize_predicted_labels_paragraph(labels)
         for labels in tqdm(segment_labels, desc="Summarizing segments")
     ]
 
-    # === Ste0.65: Create a detailed DataFrame of results ===
+    # df of results
     segment_df = pd.DataFrame({
         "Segment Text": segments,
         "Predicted Labels": segment_labels,
@@ -263,12 +261,12 @@ def process_policy_segments(
         "Summary": segment_summaries
     })
 
-    # === Step 8: Aggregate to policy-level view (unique label-based summary) ===
+    # combine to unique label-based summary
     all_labels = list(chain.from_iterable(segment_labels))
     unique_labels = sorted(set(all_labels))
     policy_summary = summarize_predicted_labels_paragraph(unique_labels)
 
-    # === Step 8.5: Track frequency and max probability for each label ===
+    # frequency and max probability
     label_freq = defaultdict(int)
     label_max_prob = defaultdict(float)
 
@@ -286,7 +284,7 @@ def process_policy_segments(
         for label, freq in sorted_labels
     )
 
-    # === Step 8.6: Calculate average prediction probabilities across filtered segments only ===
+    # average prediction probabilities 
     label_totals = defaultdict(float)
     label_counts = defaultdict(int)
 
@@ -309,7 +307,7 @@ def process_policy_segments(
         if prob > 0.5
     )
 
-    # === Step 9: Store back into app_df ===
+    # Store into app_df
     app_df["Average Label Probabilities"] = [average_predictions]
     app_df["Prediction Summary (Freq/Max)"] = [freq_max_summary]
     app_df["Data Collection Summary"] = [policy_summary]
