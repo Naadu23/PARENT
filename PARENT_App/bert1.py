@@ -23,7 +23,7 @@ transformers_logging.set_verbosity_error()
 
 MAX_LEN = 512
 REPO_ID = "Bnaad/PARENT_bert"
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MIN_TOKENS = 10
 MAX_SEGMENTS = 70
 
