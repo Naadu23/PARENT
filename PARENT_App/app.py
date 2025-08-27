@@ -80,7 +80,7 @@ st.markdown(
 
 st.markdown(
     '<p style="margin-bottom:20px;">This app helps parents understand the privacy risks in apps their children and themselves use.</p>'
-    '<p style="margin-bottom:20px;">It looks at app permissions and data use, then explains what the apps do in easy terms.</p>'
+    '<p style="margin-bottom:20px;">It looks at app permissions and data use, then explains what the apps do in simple terms.</p>'
     '<p style="margin-bottom:30px;">This way, you can protect your child’s privacy, make safer choices, and keep their digital world secure without any tech confusion.</p>',
     unsafe_allow_html=True
 )
@@ -89,7 +89,7 @@ col1, col2 = st.columns([2, 1])
 with col1:
     st.write("")
 with col2:
-    if st.button("🔄 Clear & Search Again", help='Click to clear and restart search'):
+    if st.button("🔄 Clear & Search Again", help='Click to clear and search again'):
         st.session_state.clear()
         st.rerun()
 
