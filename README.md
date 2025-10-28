@@ -55,6 +55,10 @@ Third-Party Risk: Logistic regression predicts whether data is shared externally
 
 Verdict Generation: Rule-based logic combines analysis with GDPR/UK privacy rules to provide clear, actionable advice for parents.
 
+## Demo Video
+
+Watch the PARENT demo video: [Click here](https://naadu23.github.io/PARENT/demo/index.html)
+
 
 ##  References
 
