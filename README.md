@@ -57,7 +57,7 @@ Verdict Generation: Rule-based logic combines analysis with GDPR/UK privacy rule
 
 ## Demo Video
 
-Watch the PARENT demo video: [Click here](https://naadu23.github.io/PARENT/demo/index.html)
+Watch the PARENT demo video: [Click here](https://anonymous.4open.science/w/PARENT-48EA/demo/index.html)
 
 
 ##  References
